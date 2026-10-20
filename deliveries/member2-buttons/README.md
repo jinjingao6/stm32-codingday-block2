@@ -35,3 +35,5 @@
 - `Motor_SetSpeed(0..100)`：设置占空比。
 
 工程路径：`Block2_CodingDay/`。STM32CubeIDE 导入后可直接编译。
+
+成员5接入 ADC 调速前请先阅读 [`Block2_CodingDay/MEMBER2_HANDOFF.md`](Block2_CodingDay/MEMBER2_HANDOFF.md)。

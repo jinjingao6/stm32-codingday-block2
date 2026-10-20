@@ -1,0 +1,184 @@
+# Member 2 → Member 5 对接说明
+
+## 1. 交接目标
+
+成员2已经完成按键、方向、停止和换向保护。成员5只需使用 ADC1_IN0 / PA0 采集电位器，并把 ADC 数值换算成 0～100 的速度百分比后调用 `Motor_SetSpeed()`，不要重新配置 PWM 或另写电机方向控制。
+
+## 2. 当前已验证功能
+
+- STM32F446RE 系统时钟为 84 MHz。
+- TIM4_CH1 / PB6 输出 20 kHz PWM，连接 AT8236 AIN1。
+- PA8 为方向 GPIO，连接 AT8236 AIN2。
+- K1 / PB12 控制小车前进，软件命令为 `MOTOR_REVERSE`。
+- K2 / PB14 控制小车后退，软件命令为 `MOTOR_FORWARD`。
+- K3 / PB15 调用 `MOTOR_STOP`，立即停止并取消待执行换向。
+- 按键使用下降沿 EXTI 和 40 ms 软件消抖。
+- 启动、重复启动及换向前均停止输出 150 ms，降低换向冲击。
+- 工程已经在 STM32CubeIDE 2.2.0 下 clean build，结果为 0 errors、0 warnings，并通过实车测试。
+
+注意：`MOTOR_FORWARD` / `MOTOR_REVERSE` 表示电机电气方向。由于小车电机安装方向，当前 K1（前进）映射为 `MOTOR_REVERSE`，K2（后退）映射为 `MOTOR_FORWARD`，不要再交换。
+
+## 3. 固定引脚和接线
+
+| 功能 | STM32 引脚 | 实物连接 |
+| --- | --- | --- |
+| 20 kHz PWM | PB6 / TIM4_CH1 / CN10-17 | AT8236 AIN1 |
+| 电机方向 | PA8 / CN10-23 | AT8236 AIN2 |
+| 前进键 K1 | PB12 / CN10-16 | 按键板 K1 |
+| 后退键 K2 | PB14 / CN10-28 | 按键板 K2 |
+| 停止键 K3 | PB15 / CN10-26 | 按键板 K3 |
+| ADC 电位器 | PA0 / ADC1_IN0 | 预留给成员5 |
+| 编码器捕获 | PA7 / TIM3_CH2 | 预留给成员4 |
+
+成员5不得占用 PB6、PA8、PB12、PB14、PB15 和 PA7。所有模块必须共地。
+
+## 4. 成员5使用的接口
+
+头文件：
+
+```c
+#include "motor_pwm.h"
+```
+
+速度接口：
+
+```c
+void Motor_SetSpeed(uint8_t speed);
+```
+
+- 参数范围：0～100。
+- 大于 100 的值会自动限制为 100。
+- `Motor_SetSpeed(0)` 只把速度降为零，不改变当前方向状态。
+- 之后调用 `Motor_SetSpeed(nonzero)` 会按原方向恢复运行。
+- 若需要明确停止并取消换向，应调用：
+
+```c
+Motor_RequestDirection(MOTOR_STOP);
+```
+
+方向相关接口由成员2和最终应用层使用：
+
+```c
+Motor_RequestDirection(MOTOR_FORWARD);
+Motor_RequestDirection(MOTOR_REVERSE);
+Motor_RequestDirection(MOTOR_STOP);
+Motor_GetDirection();
+```
+
+不要在成员5代码中再次调用 `Motor_PWM_Init()`；主程序已经完成初始化。
+
+## 5. 推荐的 ADC 数据接口
+
+建议 ADC 使用 12 位分辨率，原始范围为 0～4095。ADC 中断中只保存采样值和置更新标志，不在中断中执行延时、打印或复杂计算。
+
+```c
+static volatile uint16_t adc_raw;
+static volatile uint8_t adc_updated;
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
+{
+    if (hadc->Instance == ADC1)
+    {
+        adc_raw = (uint16_t)HAL_ADC_GetValue(hadc);
+        adc_updated = 1U;
+    }
+}
+```
+
+在主循环或 `ADC_Task()` 中完成换算并更新速度：
+
+```c
+if (adc_updated != 0U)
+{
+    uint16_t raw;
+
+    __disable_irq();
+    raw = adc_raw;
+    adc_updated = 0U;
+    __enable_irq();
+
+    uint8_t speed_percent = (uint8_t)(((uint32_t)raw * 100U) / 4095U);
+    Motor_SetSpeed(speed_percent);
+}
+```
+
+如果电位器在零点附近存在抖动，建议增加死区，例如 ADC 小于 80 时输出 0：
+
+```c
+if (raw < 80U)
+{
+    speed_percent = 0U;
+}
+```
+
+为避免 ADC 噪声导致 PWM 频繁变化，建议只在速度百分比变化至少 1～2% 时调用一次 `Motor_SetSpeed()`。
+
+## 6. `main.c` 集成位置
+
+当前初始化顺序：
+
+```c
+MX_GPIO_Init();
+Motor_PWM_Init();
+ButtonControl_Init();
+Motor_SetSpeed(30);       /* 成员2的固定测试速度 */
+```
+
+成员5接入后建议改为：
+
+```c
+MX_GPIO_Init();
+MX_ADC1_Init();
+Motor_PWM_Init();
+ButtonControl_Init();
+Motor_SetSpeed(0);        /* 等待第一份有效 ADC 数据 */
+HAL_ADC_Start_IT(&hadc1);
+```
+
+主循环必须保留成员2任务，并加入 ADC 任务：
+
+```c
+while (1)
+{
+    ButtonControl_Task();
+    Motor_Task();
+    ADC_Task();
+}
+```
+
+`Motor_Task()` 不可删除，否则 150 ms 非阻塞换向流程无法完成。
+
+## 7. HAL 回调合并规则
+
+- 工程已经定义 `HAL_GPIO_EXTI_Callback()`，成员5不要重复定义同名 GPIO 回调。
+- 如果成员5使用 `HAL_ADC_ConvCpltCallback()`，当前工程没有同名实现，可以新增。
+- 后续多个模块需要同一 HAL 回调，必须在一个回调中按外设实例分派，不能在不同 `.c` 文件重复定义。
+- 中断中只采样和置标志，业务逻辑放在主循环任务中。
+
+## 8. 不可改动项
+
+- 不要用 CubeMX 重新生成或覆盖 `Core/Src/motor_pwm.c`。
+- 不要改变 TIM4、PB6、20 kHz PWM、PA8 方向控制和现有按键引脚。
+- 不要在 ADC 中断内调用 `HAL_Delay()`。
+- 不要删除 `ButtonControl_Task()` 或 `Motor_Task()`。
+- 不要把 ADC 调速写成新的 PWM 初始化模块；唯一速度入口为 `Motor_SetSpeed(0..100)`。
+
+## 9. 集成验证步骤
+
+1. 车轮架空，上电后 ADC 最低位置应使电机保持停止。
+2. 缓慢旋转电位器，确认 `Motor_SetSpeed()` 输入从 0 平滑变化到 100。
+3. 按 K1，确认小车方向为前进；旋转电位器，确认速度可调。
+4. 按 K2，确认停顿约 150 ms 后反向；速度仍由 ADC 控制。
+5. 按 K3，确认立即停止且不会在 150 ms 后自行启动。
+6. K3 后按 K1 或 K2，确认按当前 ADC 速度重新启动。
+7. 用逻辑分析仪确认 PB6 频率保持 20 kHz，ADC 只改变占空比、不改变频率。
+8. 完成 clean build，要求 0 errors、0 warnings。
+
+## 10. 交付给成员1时需要说明
+
+- ADC 原始范围、分辨率、采样频率和更新标志。
+- ADC 到 0～100% 的映射公式、零点死区和滤波方法。
+- 是否限制最低启动占空比。
+- `Motor_SetSpeed()` 的调用频率。
+- 实车验证结果及逻辑分析仪波形。
+
