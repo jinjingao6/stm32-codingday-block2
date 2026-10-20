@@ -16,7 +16,7 @@
 - 启动、重复启动及换向前均停止输出 150 ms，降低换向冲击。
 - 工程已经在 STM32CubeIDE 2.2.0 下 clean build，结果为 0 errors、0 warnings，并通过实车测试。
 
-注意：`MOTOR_FORWARD` / `MOTOR_REVERSE` 表示电机电气方向。由于小车电机安装方向，当前 K1（前进）映射为 `MOTOR_REVERSE`，K2（后退）映射为 `MOTOR_FORWARD`，不要再交换。
+注意：`MOTOR_FORWARD` / `MOTOR_REVERSE` 表示电机电气方向。由于小车电机安装方向，当前实车验证后的映射为 K1（前进）→ `MOTOR_REVERSE`、K2（后退）→ `MOTOR_FORWARD`。AO1/AO2 电机接线固定不改；如果换用硬件后实车方向相反，应在 `button_control.c` 中交换 K1/K2的软件命令映射。
 
 ## 3. 固定引脚和接线
 

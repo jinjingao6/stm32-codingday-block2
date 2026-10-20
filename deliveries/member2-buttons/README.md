@@ -16,7 +16,7 @@
 | AT8236 AIN2（白线） | CN10-23 / PA8 / D7 | 方向控制 |
 | AT8236 GND（灰线） | CN10-20 / GND | 共地 |
 
-电机接 AT8236 的 AO1/AO2。若实际转向与“正转/反转”定义相反，交换 AO1/AO2 即可，不要改控制逻辑。
+电机接 AT8236 的 AO1/AO2，现有电机线保持不动。若实车前进/后退方向与按键定义相反，应在 `Core/Src/button_control.c` 中交换 K1、K2 对应的 `MOTOR_FORWARD` / `MOTOR_REVERSE` 命令，不需要改动 AO1/AO2 接线。
 
 ## 按键逻辑
 
