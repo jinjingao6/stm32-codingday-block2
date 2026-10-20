@@ -7,6 +7,7 @@ static volatile MotorDirection_t pending_command;
 static volatile uint8_t command_pending;
 static uint32_t forward_last_tick;
 static uint32_t reverse_last_tick;
+static uint32_t stop_last_tick;
 
 void ButtonControl_Init(void)
 {
@@ -14,6 +15,7 @@ void ButtonControl_Init(void)
     command_pending = 0U;
     forward_last_tick = HAL_GetTick() - BUTTON_DEBOUNCE_MS;
     reverse_last_tick = HAL_GetTick() - BUTTON_DEBOUNCE_MS;
+    stop_last_tick = HAL_GetTick() - BUTTON_DEBOUNCE_MS;
 }
 
 void ButtonControl_EXTI_Callback(uint16_t gpio_pin)
@@ -32,6 +34,13 @@ void ButtonControl_EXTI_Callback(uint16_t gpio_pin)
     {
         reverse_last_tick = now;
         pending_command = MOTOR_REVERSE;
+        command_pending = 1U;
+    }
+    else if ((gpio_pin == STOP_BTN_Pin) &&
+             ((now - stop_last_tick) >= BUTTON_DEBOUNCE_MS))
+    {
+        stop_last_tick = now;
+        pending_command = MOTOR_STOP;
         command_pending = 1U;
     }
 }

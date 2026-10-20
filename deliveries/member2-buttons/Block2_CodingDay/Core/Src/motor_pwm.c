@@ -1,7 +1,7 @@
 #include "motor_pwm.h"
 
 #define MOTOR_PWM_PERIOD_COUNTS 4200U
-#define MOTOR_DIRECTION_DEADTIME_MS 50U
+#define MOTOR_DIRECTION_DEADTIME_MS 150U
 
 static uint8_t requested_speed;
 static MotorDirection_t active_direction;
@@ -96,12 +96,8 @@ void Motor_RequestDirection(MotorDirection_t direction)
         return;
     }
 
-    if ((direction == active_direction) && (direction_change_pending == 0U))
-    {
-        return;
-    }
-
-    /* Coast before changing polarity to avoid an abrupt bridge reversal. */
+    /* Coast before every start/restart. Repeated K1/K2 presses can therefore
+       recover from a driver protection event instead of being ignored. */
     TIM4->CCR1 = 0U;
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
     pending_direction = direction;

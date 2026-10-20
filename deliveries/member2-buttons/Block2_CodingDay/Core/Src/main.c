@@ -176,8 +176,8 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
-  /* K1/K2 are active-low and use independent EXTI lines 12 and 14. */
-  GPIO_InitStruct.Pin = FORWARD_BTN_Pin|REVERSE_BTN_Pin;
+  /* K1/K2/K3 are active-low and use EXTI lines 12, 14 and 15. */
+  GPIO_InitStruct.Pin = FORWARD_BTN_Pin|REVERSE_BTN_Pin|STOP_BTN_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(FORWARD_BTN_GPIO_Port, &GPIO_InitStruct);
