@@ -10,8 +10,9 @@
 | 按键板 K1 | PB12 | 正转，下降沿 EXTI12 |
 | 按键板 K2 | PB14 | 反转，下降沿 EXTI14 |
 | AT8236 GND | GND | 必须与 Nucleo 共地 |
-| AT8236 AIN1 | PB6 / TIM4_CH1 | 正转 20 kHz PWM |
-| AT8236 AIN2 | PB7 / TIM4_CH2 | 反转 20 kHz PWM |
+| AT8236 AIN1（黑线） | PB6 / D10 / TIM4_CH1 | 20 kHz PWM |
+| AT8236 AIN2（白线） | PC7 / D9 | 方向控制 |
+| AT8236 GND（灰线） | GND | 共地 |
 
 电机接 AT8236 的 AO1/AO2。若实际转向与“正转/反转”定义相反，交换 AO1/AO2 即可，不要改控制逻辑。
 
