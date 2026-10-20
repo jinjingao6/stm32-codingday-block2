@@ -16,28 +16,28 @@ static void Motor_ApplyOutputs(void)
     if ((active_direction == MOTOR_STOP) || (requested_speed == 0U))
     {
         TIM4->CCR1 = 0U;
-        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
     }
     else if (active_direction == MOTOR_FORWARD)
     {
         /* AIN1 = PWM, AIN2 = 0: forward, fast decay. */
-        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
         TIM4->CCR1 = compare;
     }
     else if (active_direction == MOTOR_REVERSE)
     {
         /* AIN1 = PWM, AIN2 = 1: reverse during PWM-low time. */
-        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
         TIM4->CCR1 = MOTOR_PWM_PERIOD_COUNTS - compare;
     }
 }
 
 void Motor_PWM_Init(void)
 {
-    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN | RCC_AHB1ENR_GPIOCEN;
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN | RCC_AHB1ENR_GPIOBEN;
     RCC->APB1ENR |= RCC_APB1ENR_TIM4EN;
 
-    /* Existing wiring: PB6/D10 = TIM4_CH1 (AIN1), PC7/D9 = AIN2. */
+    /* Final wiring: PB6/D10 = TIM4_CH1 (AIN1), PA8/D7 = AIN2. */
     GPIOB->MODER &= ~(3U << (6U * 2U));
     GPIOB->MODER |= (2U << (6U * 2U));
     GPIOB->OTYPER &= ~(1U << 6U);
@@ -46,11 +46,11 @@ void Motor_PWM_Init(void)
     GPIOB->AFR[0] &= ~(0xFU << (6U * 4U));
     GPIOB->AFR[0] |= (2U << (6U * 4U));
 
-    GPIOC->MODER &= ~(3U << (7U * 2U));
-    GPIOC->MODER |= (1U << (7U * 2U));
-    GPIOC->OTYPER &= ~(1U << 7U);
-    GPIOC->PUPDR &= ~(3U << (7U * 2U));
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_RESET);
+    GPIOA->MODER &= ~(3U << (8U * 2U));
+    GPIOA->MODER |= (1U << (8U * 2U));
+    GPIOA->OTYPER &= ~(1U << 8U);
+    GPIOA->PUPDR &= ~(3U << (8U * 2U));
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
 
     TIM4->CR1 = 0U;
     TIM4->PSC = 0U;
@@ -103,7 +103,7 @@ void Motor_RequestDirection(MotorDirection_t direction)
 
     /* Coast before changing polarity to avoid an abrupt bridge reversal. */
     TIM4->CCR1 = 0U;
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
     pending_direction = direction;
     direction_change_tick = HAL_GetTick();
     direction_change_pending = 1U;
