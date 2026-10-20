@@ -1,0 +1,15 @@
+# IDE workspace cache; retain project configuration files.
+.metadata/
+
+# Generated STM32CubeIDE build directories.
+**/Debug/
+**/Release/
+
+# Local credentials and OS files.
+.env
+.env.*
+!.env.example
+Thumbs.db
+.DS_Store
+
+# ZIP deliveries are intentionally allowed.
