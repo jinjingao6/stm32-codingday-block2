@@ -26,14 +26,14 @@ void ButtonControl_EXTI_Callback(uint16_t gpio_pin)
         ((now - forward_last_tick) >= BUTTON_DEBOUNCE_MS))
     {
         forward_last_tick = now;
-        pending_command = MOTOR_FORWARD;
+        pending_command = MOTOR_REVERSE;
         command_pending = 1U;
     }
     else if ((gpio_pin == REVERSE_BTN_Pin) &&
              ((now - reverse_last_tick) >= BUTTON_DEBOUNCE_MS))
     {
         reverse_last_tick = now;
-        pending_command = MOTOR_REVERSE;
+        pending_command = MOTOR_FORWARD;
         command_pending = 1U;
     }
     else if ((gpio_pin == STOP_BTN_Pin) &&
