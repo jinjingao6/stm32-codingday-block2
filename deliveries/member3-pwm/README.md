@@ -14,11 +14,11 @@
 *   **开发板和 MCU 完整型号**：NUCLEO-F446RE / STM32F446RETx
 *   **STM32CubeIDE 版本**：1.17.0
 *   **系统时钟、外设时钟、定时器实际时钟**：HCLK 84MHz，APB1 定时器时钟 84MHz。
-*   **引脚、接线、外设实例和通道**：引脚 **PB6** (对应板子外侧 `PWM/CS/D10` 孔)，外设 TIM4，通道 Channel 1。高电平有效。其他模块请勿占用 PB6、PA7、PA0。
+*   **引脚、接线、外设实例和通道**：引脚 **PB6** ，外设 TIM4，通道 Channel 1。高电平有效。其他模块请勿占用 PB6、PA7、PA0。
 *   **中断、优先级、触发方式**：无中断，纯硬件 PWM。
 *   **PSC / ARR**：Prescaler = 0，Counter Period (ARR) = 4199。（84MHz / 4200 = 20kHz）
 
-**集成方法 & 接口约定（重点）**
+**集成方法 & 接口约定**
 *   **需复制的文件**：`motor_pwm.c` (放入 `Core/Src`)，`motor_pwm.h` (放入 `Core/Inc`)。
 *   **启动方式**：在 `main.c` 的 `USER CODE 2` 中调用 `Motor_PWM_Init();` 即可启动 PWM。
 *   **占空比接口**：调用 `void Motor_SetSpeed(uint8_t speed);`
