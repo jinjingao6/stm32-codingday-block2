@@ -1,5 +1,10 @@
 ### Member 3 — 模块交付说明 (PWM 模块)
 
+###固定部分：
+时钟树固定，系统主频和APB1定时器时钟保持84MHz
+CubeMX 里不能点 TIM4：motor_pwm.c 是纯寄存器手写的底层配置，在.ioc文件里直接再次配置TIM4会冲突
+引脚占位：PB6 被 TIM4_CH1 绝对占用
+
 完整 STM32CubeIDE 工程已上传至 [Block2_CodingDay](Block2_CodingDay/)，目录结构已整理，可直接导入。工程已使用 STM32CubeIDE 2.2.0 的 ARM 工具链完成构建，结果为 0 errors、0 warnings。
 
 **GitHub 用户名**：[Yu417725]
