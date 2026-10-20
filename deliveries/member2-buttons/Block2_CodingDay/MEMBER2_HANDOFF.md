@@ -182,3 +182,59 @@ while (1)
 - `Motor_SetSpeed()` 的调用频率。
 - 实车验证结果及逻辑分析仪波形。
 
+## 11. 成员2所做的具体改动
+
+本工程以成员3的单路 20 kHz PWM 工程为基础。成员3提供了 TIM4_CH1 / PB6 的 PWM 初始化和 `Motor_SetSpeed(0..100)`；成员2没有改变 20 kHz 频率要求，在此基础上完成了以下工作：
+
+### 11.1 硬件和引脚确定
+
+- 核对 NUCLEO-F446RE、AT8236 和 HW-937AB 按键板的实际排针。
+- 将 PB6 / CN10-17 保留为 AT8236 AIN1 的 20 kHz PWM。
+- 将 PA8 / CN10-23 确定为 AT8236 AIN2 的方向控制输出。
+- 将 PB12 / CN10-16、PB14 / CN10-28 和 PB15 / CN10-26 分别分配给 K1、K2、K3。
+- 修正早期测试中 AIN2 使用 PC7 / D9 的临时配置，使代码、`.ioc`、README 和最终实物接线统一为 PA8 / D7。
+- 保留 PA0 给成员5的 ADC1_IN0，保留 PA7 给成员4的 TIM3_CH2 输入捕获。
+
+### 11.2 按键输入和中断
+
+- 新增 `button_control.c/.h`，把按键处理从电机驱动中独立出来。
+- 将 K1、K2、K3 配置为内部上拉、下降沿 EXTI 输入。
+- 在共享的 `EXTI15_10_IRQHandler()` 中分别分派 EXTI12、EXTI14 和 EXTI15。
+- 在 `HAL_GPIO_EXTI_Callback()` 中统一转交给 `ButtonControl_EXTI_Callback()`，避免在中断处理函数中执行复杂业务。
+- 使用待处理命令标志，由 `ButtonControl_Task()` 在主循环执行方向请求。
+
+### 11.3 按键消抖
+
+- 为三个按键分别记录最近一次有效触发时间，互不干扰。
+- 使用 `HAL_GetTick()` 实现 40 ms 软件消抖，防止一次机械按键抖动被识别为多次操作。
+- 中断中不使用 `HAL_Delay()`，不会阻塞系统节拍和其他中断。
+
+### 11.4 方向与停止控制
+
+- 在 `motor_pwm.h` 中定义 `MOTOR_STOP`、`MOTOR_FORWARD` 和 `MOTOR_REVERSE` 三种状态。
+- 新增 `Motor_RequestDirection()`、`Motor_Task()` 和 `Motor_GetDirection()` 接口。
+- PA8 / AIN2 拉低时配合 PB6 PWM 驱动一个方向；PA8 / AIN2 拉高时使用互补 PWM 比较值驱动另一方向。
+- 根据实车运动方向调整最终映射：K1 为小车前进、K2 为小车后退。
+- 增加 K3 停止功能：立即关闭 PWM，并取消尚未完成的换向请求。
+
+### 11.5 换向保护和故障修复
+
+- 实现非阻塞换向状态机，换向时先关闭输出，再经过安全等待后启动目标方向。
+- 最初保护时间为 50 ms；根据实车快速换向时偶发停转现象，将其增加到 150 ms。
+- 修复“软件认为方向未改变而忽略同方向按键”的问题：现在重复按 K1 或 K2 也会执行一次安全停止和重新启动，可从偶发驱动保护状态恢复。
+- 换向等待使用 `Motor_Task()` 和 `HAL_GetTick()` 完成，不使用阻塞式延时。
+
+### 11.6 主程序和配置文件
+
+- 在初始化阶段加入 `Motor_PWM_Init()`、`ButtonControl_Init()` 和测试速度设置。
+- 在主循环持续调用 `ButtonControl_Task()` 和 `Motor_Task()`。
+- 更新 `main.h`、`main.c`、`stm32f4xx_it.c` 和 CubeMX `.ioc` 中的按键、EXTI及 PA8 配置。
+- 编写成员2 README，记录最终接线、按键逻辑、公开接口和安全行为。
+
+### 11.7 验证结果
+
+- 在 STM32CubeIDE 2.2.0 中多次执行 clean build，均为 0 errors、0 warnings。
+- 完成程序烧录和实车验证：K1 前进、K2 后退、K3 停止。
+- 验证快速换向会先进入约 150 ms 安全停顿，然后按目标方向重新启动。
+- 验证停止后可以通过 K1 或 K2 按当前设定速度重新启动。
+
